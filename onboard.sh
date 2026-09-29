@@ -4,7 +4,8 @@ set -Eeuo pipefail
 # Deploys the Intelog cloud-runner role into the currently authenticated AWS account.
 # Requirements: AWS CLI v2 and credentials that can create CloudFormation/IAM resources.
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 readonly TEMPLATE="$SCRIPT_DIR/intelog-cloud-runner-role.yaml"
 readonly CONFIG_FILE="${1:-$SCRIPT_DIR/onboarding.env}"
 
