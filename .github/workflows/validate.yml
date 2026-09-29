@@ -1,0 +1,23 @@
+name: Validate onboarding package
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell wrapper
+        run: bash -n onboard.sh
+      - name: Run ShellCheck
+        run: shellcheck onboard.sh
+      - name: Install CloudFormation linter
+        run: pip install --disable-pip-version-check cfn-lint
+      - name: Validate CloudFormation template
+        run: cfn-lint intelog-cloud-runner-role.yaml

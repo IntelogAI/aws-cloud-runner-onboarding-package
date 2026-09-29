@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Intelog SaaS cloud-runner role for approved VPC provisioning.
+
+Parameters:
+  GoogleServiceAccountSubject:
+    Type: String
+    Description: Provided by Intelog; immutable subject of the Intelog GCP runner service account.
+  GoogleAuthorizedParty:
+    Type: String
+    Description: Provided by Intelog; OAuth client ID (azp) of the Intelog GCP runner service account.
+  TokenAudience:
+    Type: String
+    Description: Provided by Intelog; unique audience for this AWS account integration.
+  AllowedRegion:
+    Type: String
+    AllowedPattern: '^[a-z]{2}-[a-z]+-[0-9]$'
+    Description: The only AWS region in which this role may provision resources.
+  RoleName:
+    Type: String
+    Default: IntelogCloudRunner
+    AllowedPattern: '^[A-Za-z0-9+=,.@_-]{1,64}$'
+
+Resources:
+  IntelogCloudRunnerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: IntelogGcpRunnerOnly
+            Effect: Allow
+            Principal:
+              Federated: accounts.google.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                accounts.google.com:aud: !Ref GoogleAuthorizedParty
+                accounts.google.com:oaud: !Ref TokenAudience
+                accounts.google.com:sub: !Ref GoogleServiceAccountSubject
+      Policies:
+        - PolicyName: IntelogApprovedVpcProvisioning
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ApprovedVpcLifecycle
+                Effect: Allow
+                Action:
+                  - ec2:CreateVpc
+                  - ec2:DeleteVpc
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeTags
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: !Ref AllowedRegion
+
+Outputs:
+  RoleArn:
+    Description: Send this value to Intelog to complete account registration.
+    Value: !GetAtt IntelogCloudRunnerRole.Arn
+  AwsAccountId:
+    Description: AWS account connected by this stack.
+    Value: !Ref AWS::AccountId
+  AllowedRegion:
+    Value: !Ref AllowedRegion
+  TokenAudience:
+    Value: !Ref TokenAudience
