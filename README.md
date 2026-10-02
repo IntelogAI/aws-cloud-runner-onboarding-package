@@ -15,7 +15,7 @@ Intelog does not ask for AWS access keys, IAM-user credentials, or console acces
 
 1. Download or clone this repository.
 2. Copy `onboarding.env.example` to `onboarding.env`.
-3. Set `EXPECTED_AWS_ACCOUNT_ID`, `TOKEN_AUDIENCE`, and `ALLOWED_REGION` using the values agreed with Intelog.
+3. Set `EXPECTED_AWS_ACCOUNT_ID`, `TOKEN_AUDIENCE`, `ALLOWED_REGION`, `PROVISIONING_PROFILE`, and `POLICY_VERSION` using the values shown by Intelog.
 4. Run:
 
    ```bash
@@ -24,11 +24,17 @@ Intelog does not ask for AWS access keys, IAM-user credentials, or console acces
    ```
 
 5. Review the account and principal printed by the wrapper. The stack creates `IntelogCloudRunner` and prints its outputs.
-6. Send Intelog only these outputs: `RoleArn`, `AwsAccountId`, `AllowedRegion`, and `TokenAudience`.
+6. Send Intelog only these outputs: `RoleArn`, `AwsAccountId`, `AllowedRegion`, `TokenAudience`, `ProvisioningProfile`, `PolicyVersion`, and `AllowedTemplates`.
 
 ## What Intelog can do
 
-The role is restricted to the configured AWS region and permits lifecycle actions for the approved VPC template. It cannot sign in to the AWS console and has no long-lived credentials.
+The role is restricted to the configured AWS region and the customer-selected permission profile. `VpcSmoke` permits the approved VPC smoke template. `EksPlatform` adds the regional EKS platform permissions and Intelog-scoped IAM role management required by the approved EKS template. It cannot sign in to the AWS console and has no long-lived credentials.
+
+## Permission updates
+
+When an approved Intelog design requires capabilities outside the current profile, Intelog supplies the new profile and policy version. Review the CloudFormation change set, update `onboarding.env`, and run `./onboard.sh` again. The wrapper updates the existing stack and role; it does not create a second integration or change the token audience.
+
+Do not select a broader profile unless the corresponding architecture has been approved. Intelog will re-verify the role and enable the newly returned `AllowedTemplates` only after the stack update completes.
 
 The trust policy verifies all of the following Google token claims:
 
@@ -38,7 +44,7 @@ The trust policy verifies all of the following Google token claims:
 
 ## Change or remove access
 
-To change the region or role parameters, update `onboarding.env` and run `./onboard.sh` again.
+To change the region, permission profile, policy version, or role parameters, update `onboarding.env` and run `./onboard.sh` again.
 
 To revoke Intelog access, delete the `intelog-cloud-runner` CloudFormation stack. Deleting the stack removes the IAM role. Notify Intelog so the corresponding SaaS integration can also be disabled.
 

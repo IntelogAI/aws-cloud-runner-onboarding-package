@@ -27,6 +27,7 @@ Provide the repository or release archive and confirm:
 - unique token audience;
 - approved resource region;
 - expected role name, normally `IntelogCloudRunner`.
+- required provisioning profile and policy version.
 
 The Google service-account subject and authorized-party values are maintained in `onboarding.env.example`. They identify the Intelog runner; they are not AWS credentials.
 
@@ -38,6 +39,9 @@ Ask the customer to return only the wrapper outputs:
 - `AwsAccountId`;
 - `AllowedRegion`;
 - `TokenAudience`.
+- `ProvisioningProfile`;
+- `PolicyVersion`;
+- `AllowedTemplates`.
 
 Reject the response if the account ID, audience, region, or role name differs from the values issued for the integration.
 
@@ -53,11 +57,16 @@ Create an `external_cloud_accounts` record scoped to the correct tenant and envi
   "roleArn": "arn:aws:iam::<account-id>:role/IntelogCloudRunner",
   "webIdentityAudience": "<unique audience>",
   "allowedRegions": ["<approved region>"],
+  "provisioningProfile": "VpcSmoke",
+  "policyVersion": "2026-10-02",
+  "allowedTemplates": ["aws-vpc"],
   "enabled": false
 }
 ```
 
 Keep the record disabled until an Intelog runner validation job successfully calls `sts:GetCallerIdentity` using the returned role. Enable the record only after the returned account and role match the registration request.
+
+If a design requires a template outside `allowedTemplates`, mark the integration as requiring a permission update. Provide the customer with the immutable onboarding release, expected profile, policy version, and a CloudFormation change-set link. Enable the new templates only after the customer returns matching stack outputs and verification succeeds.
 
 ## Runtime behavior
 
