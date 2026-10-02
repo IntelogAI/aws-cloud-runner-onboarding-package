@@ -63,6 +63,8 @@ aws cloudformation deploy \
   --tags Key=managed-by,Value=intelog Key=system,Value=cloud-runner \
   --no-execute-changeset
 
+# The backticks are JMESPath literals, not shell substitutions.
+# shellcheck disable=SC2016
 CHANGE_SET_ID="$(aws cloudformation list-change-sets \
   --region "$CONTROL_REGION" \
   --stack-name "$STACK_NAME" \
