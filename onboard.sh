@@ -26,6 +26,7 @@ source "$CONFIG_FILE"
 : "${ALLOWED_REGION:?Set ALLOWED_REGION}"
 
 [[ "$EXPECTED_AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]] || fail "EXPECTED_AWS_ACCOUNT_ID must contain exactly 12 digits"
+[[ "$ALLOWED_REGION" != "REQUEST_FROM_INTELOG" ]] || fail "Replace ALLOWED_REGION with the region approved by Intelog"
 [[ "$ALLOWED_REGION" =~ ^[a-z]{2}-[a-z]+-[0-9]$ ]] || fail "ALLOWED_REGION is not a valid AWS region name"
 [[ "$TOKEN_AUDIENCE" != "REQUEST_FROM_INTELOG" ]] || fail "Replace TOKEN_AUDIENCE with the value supplied by Intelog"
 
