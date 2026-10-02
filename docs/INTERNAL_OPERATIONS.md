@@ -27,6 +27,7 @@ Provide the repository or release archive and confirm:
 - unique token audience;
 - approved resource region;
 - expected role name, normally `IntelogCloudRunner`.
+- required provisioning profile and policy version.
 
 The Google service-account subject and authorized-party values are maintained in `onboarding.env.example`. They identify the Intelog runner; they are not AWS credentials.
 
@@ -38,6 +39,9 @@ Ask the customer to return only the wrapper outputs:
 - `AwsAccountId`;
 - `AllowedRegion`;
 - `TokenAudience`.
+- `ProvisioningProfile`;
+- `PolicyVersion`;
+- `AllowedTemplates`.
 
 Reject the response if the account ID, audience, region, or role name differs from the values issued for the integration.
 
@@ -53,11 +57,24 @@ Create an `external_cloud_accounts` record scoped to the correct tenant and envi
   "roleArn": "arn:aws:iam::<account-id>:role/IntelogCloudRunner",
   "webIdentityAudience": "<unique audience>",
   "allowedRegions": ["<approved region>"],
+  "provisioningProfile": "VpcSmoke",
+  "policyVersion": "2026-10-02",
+  "allowedTemplates": ["aws-vpc"],
   "enabled": false
 }
 ```
 
 Keep the record disabled until an Intelog runner validation job successfully calls `sts:GetCallerIdentity` using the returned role. Enable the record only after the returned account and role match the registration request.
+
+If a design requires a template outside `allowedTemplates`, mark the integration as requiring a permission update. Provide the customer with the immutable onboarding release, expected profile, policy version, and a CloudFormation change-set link. Enable the new templates only after the customer returns matching stack outputs and verification succeeds.
+
+Each production onboarding version is an immutable Git tag in the repository. Pushing a `v*` tag publishes both customer archive formats and checksums. Run the **Promote CloudFormation template** workflow for that tag to copy the validated template to Intelog's public onboarding S3 bucket under the same immutable version. The repository must have `ONBOARDING_PUBLISH_ROLE_ARN` configured as an Actions variable, and that AWS role should only be able to write under the onboarding artifact prefix. Configure the SaaS backend with the exact object URL, for example:
+
+```text
+https://intelog-public-artifacts.s3.us-east-1.amazonaws.com/aws-onboarding/v1.1.0/intelog-cloud-runner-role.yaml
+```
+
+CloudFormation quick-create accepts an S3-hosted template URL. For first-time onboarding, the backend combines that URL with the tenant integration's audience, region, and required profile to produce a prefilled Quick Create link. For upgrades, it links the customer to the existing stack and supplies the immutable template URL and expected parameters. The customer remains the actor that reviews and executes the change set in its AWS account.
 
 ## Runtime behavior
 

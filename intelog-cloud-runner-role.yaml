@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Intelog SaaS cloud-runner role for approved VPC provisioning.
+Description: Intelog SaaS cloud-runner role with versioned, customer-approved provisioning profiles.
 
 Parameters:
   GoogleServiceAccountSubject:
@@ -19,6 +19,21 @@ Parameters:
     Type: String
     Default: IntelogCloudRunner
     AllowedPattern: '^[A-Za-z0-9+=,.@_-]{1,64}$'
+  ProvisioningProfile:
+    Type: String
+    Default: VpcSmoke
+    AllowedValues:
+      - VpcSmoke
+      - EksPlatform
+    Description: Customer-approved Intelog infrastructure capability profile.
+  PolicyVersion:
+    Type: String
+    Default: '2026-10-02'
+    AllowedPattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    Description: Version of the Intelog permission policy contract.
+
+Conditions:
+  IsEksPlatform: !Equals [!Ref ProvisioningProfile, EksPlatform]
 
 Resources:
   IntelogCloudRunnerRole:
@@ -26,6 +41,11 @@ Resources:
     Properties:
       RoleName: !Ref RoleName
       MaxSessionDuration: 3600
+      Tags:
+        - Key: intelog:provisioning-profile
+          Value: !Ref ProvisioningProfile
+        - Key: intelog:policy-version
+          Value: !Ref PolicyVersion
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -40,7 +60,7 @@ Resources:
                 accounts.google.com:oaud: !Ref TokenAudience
                 accounts.google.com:sub: !Ref GoogleServiceAccountSubject
       Policies:
-        - PolicyName: IntelogApprovedVpcProvisioning
+        - PolicyName: IntelogVpcSmokeProvisioning
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -50,13 +70,162 @@ Resources:
                   - ec2:CreateVpc
                   - ec2:DeleteVpc
                   - ec2:DescribeVpcs
+                  - ec2:DescribeVpcAttribute
                   - ec2:DescribeTags
                   - ec2:CreateTags
                   - ec2:DeleteTags
+                  - ec2:ModifyVpcAttribute
                 Resource: '*'
                 Condition:
                   StringEquals:
                     aws:RequestedRegion: !Ref AllowedRegion
+              - Sid: ReadOwnProvisioningContract
+                Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:ListRoleTags
+                  - iam:ListRolePolicies
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${RoleName}
+        - !If
+          - IsEksPlatform
+          - PolicyName: IntelogEksRegionalProvisioning
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Sid: EksAndRegionalDependencies
+                  Effect: Allow
+                  Action:
+                    - autoscaling:DescribeAutoScalingGroups
+                    - autoscaling:DescribeLaunchConfigurations
+                    - ec2:AllocateAddress
+                    - ec2:AssociateRouteTable
+                    - ec2:AttachInternetGateway
+                    - ec2:AuthorizeSecurityGroupEgress
+                    - ec2:AuthorizeSecurityGroupIngress
+                    - ec2:CreateInternetGateway
+                    - ec2:CreateLaunchTemplate
+                    - ec2:CreateNatGateway
+                    - ec2:CreateRoute
+                    - ec2:CreateRouteTable
+                    - ec2:CreateSecurityGroup
+                    - ec2:CreateSubnet
+                    - ec2:CreateTags
+                    - ec2:CreateVpc
+                    - ec2:DeleteInternetGateway
+                    - ec2:DeleteLaunchTemplate
+                    - ec2:DeleteNatGateway
+                    - ec2:DeleteRoute
+                    - ec2:DeleteRouteTable
+                    - ec2:DeleteSecurityGroup
+                    - ec2:DeleteSubnet
+                    - ec2:DeleteTags
+                    - ec2:DeleteVpc
+                    - ec2:Describe*
+                    - ec2:DetachInternetGateway
+                    - ec2:DisassociateRouteTable
+                    - ec2:ModifySubnetAttribute
+                    - ec2:ModifyVpcAttribute
+                    - ec2:ReleaseAddress
+                    - ec2:RevokeSecurityGroupEgress
+                    - ec2:RevokeSecurityGroupIngress
+                    - ecr:CreateRepository
+                    - ecr:DeleteLifecyclePolicy
+                    - ecr:DeleteRepository
+                    - ecr:DescribeRepositories
+                    - ecr:GetLifecyclePolicy
+                    - ecr:ListTagsForResource
+                    - ecr:PutLifecyclePolicy
+                    - ecr:TagResource
+                    - ecr:UntagResource
+                    - eks:AssociateAccessPolicy
+                    - eks:CreateAccessEntry
+                    - eks:CreateAddon
+                    - eks:CreateCluster
+                    - eks:CreateNodegroup
+                    - eks:DeleteAccessEntry
+                    - eks:DeleteAddon
+                    - eks:DeleteCluster
+                    - eks:DeleteNodegroup
+                    - eks:Describe*
+                    - eks:DisassociateAccessPolicy
+                    - eks:List*
+                    - eks:TagResource
+                    - eks:UntagResource
+                    - eks:UpdateAddon
+                    - eks:UpdateClusterConfig
+                    - eks:UpdateClusterVersion
+                    - eks:UpdateNodegroupConfig
+                    - eks:UpdateNodegroupVersion
+                    - kms:CreateAlias
+                    - kms:CreateGrant
+                    - kms:CreateKey
+                    - kms:DeleteAlias
+                    - kms:DescribeKey
+                    - kms:DisableKey
+                    - kms:EnableKeyRotation
+                    - kms:GetKeyPolicy
+                    - kms:GetKeyRotationStatus
+                    - kms:ListAliases
+                    - kms:ListResourceTags
+                    - kms:PutKeyPolicy
+                    - kms:ScheduleKeyDeletion
+                    - kms:TagResource
+                    - kms:UntagResource
+                    - logs:CreateLogGroup
+                    - logs:DeleteLogGroup
+                    - logs:DescribeLogGroups
+                    - logs:ListTagsForResource
+                    - logs:PutRetentionPolicy
+                    - logs:TagResource
+                    - logs:UntagResource
+                  Resource: '*'
+                  Condition:
+                    StringEquals:
+                      aws:RequestedRegion: !Ref AllowedRegion
+                - Sid: ManageIntelogEksRoles
+                  Effect: Allow
+                  Action:
+                    - iam:AddRoleToInstanceProfile
+                    - iam:AttachRolePolicy
+                    - iam:CreateInstanceProfile
+                    - iam:CreateRole
+                    - iam:DeleteInstanceProfile
+                    - iam:DeleteRole
+                    - iam:DeleteRolePolicy
+                    - iam:DetachRolePolicy
+                    - iam:GetInstanceProfile
+                    - iam:GetRole
+                    - iam:GetRolePolicy
+                    - iam:ListAttachedRolePolicies
+                    - iam:ListInstanceProfilesForRole
+                    - iam:ListRolePolicies
+                    - iam:PassRole
+                    - iam:PutRolePolicy
+                    - iam:RemoveRoleFromInstanceProfile
+                    - iam:TagInstanceProfile
+                    - iam:TagRole
+                    - iam:UntagInstanceProfile
+                    - iam:UntagRole
+                    - iam:UpdateAssumeRolePolicy
+                  Resource:
+                    - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/intelog/*
+                    - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/intelog/*
+                - Sid: CreateEksServiceLinkedRole
+                  Effect: Allow
+                  Action: iam:CreateServiceLinkedRole
+                  Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/eks.amazonaws.com/AWSServiceRoleForAmazonEKS
+                  Condition:
+                    StringEquals:
+                      iam:AWSServiceName: eks.amazonaws.com
+                - Sid: CreateEksNodegroupServiceLinkedRole
+                  Effect: Allow
+                  Action: iam:CreateServiceLinkedRole
+                  Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup
+                  Condition:
+                    StringEquals:
+                      iam:AWSServiceName: eks-nodegroup.amazonaws.com
+          - !Ref AWS::NoValue
 
 Outputs:
   RoleArn:
@@ -69,3 +238,9 @@ Outputs:
     Value: !Ref AllowedRegion
   TokenAudience:
     Value: !Ref TokenAudience
+  ProvisioningProfile:
+    Value: !Ref ProvisioningProfile
+  PolicyVersion:
+    Value: !Ref PolicyVersion
+  AllowedTemplates:
+    Value: !If [IsEksPlatform, 'aws-vpc,aws-eks', 'aws-vpc']
