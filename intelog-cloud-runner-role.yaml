@@ -83,7 +83,9 @@ Resources:
                 Effect: Allow
                 Action:
                   - iam:GetRole
+                  - iam:GetRolePolicy
                   - iam:ListRoleTags
+                  - iam:ListRolePolicies
                 Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${RoleName}
         - !If
           - IsEksPlatform
