@@ -70,9 +70,11 @@ Resources:
                   - ec2:CreateVpc
                   - ec2:DeleteVpc
                   - ec2:DescribeVpcs
+                  - ec2:DescribeVpcAttribute
                   - ec2:DescribeTags
                   - ec2:CreateTags
                   - ec2:DeleteTags
+                  - ec2:ModifyVpcAttribute
                 Resource: '*'
                 Condition:
                   StringEquals:
@@ -214,6 +216,13 @@ Resources:
                   Condition:
                     StringEquals:
                       iam:AWSServiceName: eks.amazonaws.com
+                - Sid: CreateEksNodegroupServiceLinkedRole
+                  Effect: Allow
+                  Action: iam:CreateServiceLinkedRole
+                  Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup
+                  Condition:
+                    StringEquals:
+                      iam:AWSServiceName: eks-nodegroup.amazonaws.com
           - !Ref AWS::NoValue
 
 Outputs:

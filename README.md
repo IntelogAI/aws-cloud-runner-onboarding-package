@@ -23,8 +23,9 @@ Intelog does not ask for AWS access keys, IAM-user credentials, or console acces
    ./onboard.sh
    ```
 
-5. Review the account and principal printed by the wrapper. The stack creates `IntelogCloudRunner` and prints its outputs.
-6. Send Intelog only these outputs: `RoleArn`, `AwsAccountId`, `AllowedRegion`, `TokenAudience`, `ProvisioningProfile`, `PolicyVersion`, and `AllowedTemplates`.
+5. Review the account, principal, and CloudFormation change set printed by the wrapper. The first run does **not** execute it.
+6. Execute the exact change set using the command printed by the wrapper. After CloudFormation completes, run `aws cloudformation describe-stacks --stack-name intelog-cloud-runner --query 'Stacks[0].Outputs'` (add `--region` if you changed `CONTROL_REGION`).
+7. Send Intelog only these outputs: `RoleArn`, `AwsAccountId`, `AllowedRegion`, `TokenAudience`, `ProvisioningProfile`, `PolicyVersion`, and `AllowedTemplates`.
 
 ## What Intelog can do
 
@@ -32,7 +33,9 @@ The role is restricted to the configured AWS region and the customer-selected pe
 
 ## Permission updates
 
-When an approved Intelog design requires capabilities outside the current profile, Intelog supplies the new profile and policy version. Review the CloudFormation change set, update `onboarding.env`, and run `./onboard.sh` again. The wrapper updates the existing stack and role; it does not create a second integration or change the token audience.
+When an approved Intelog design requires capabilities outside the current profile, Intelog supplies the new profile and policy version. Update `onboarding.env` and run `./onboard.sh` again. The wrapper creates a change set without executing it; review it, then run the printed `execute-change-set` command. This updates the existing stack and role; it does not create a second integration or change the token audience.
+
+For first-time onboarding, Intelog may provide a prefilled AWS Quick Create link. For an existing integration, Intelog links to the CloudFormation stacks page and supplies the immutable template URL plus the expected profile/version; select the existing stack, create the change set, review it, and execute it. Do not substitute a template from an unversioned release.
 
 Do not select a broader profile unless the corresponding architecture has been approved. Intelog will re-verify the role and enable the newly returned `AllowedTemplates` only after the stack update completes.
 
@@ -54,6 +57,8 @@ To revoke Intelog access, delete the `intelog-cloud-runner` CloudFormation stack
 - `onboard.sh` — validation and deployment wrapper.
 - `onboarding.env.example` — configuration template; never add credentials.
 - `docs/INTERNAL_OPERATIONS.md` — Intelog team onboarding and registration procedure.
+
+Tagged releases contain `.tar.gz` and `.zip` customer packages plus `SHA256SUMS`. Use a tagged archive or the exact versioned S3 CloudFormation URL for onboarding and upgrades; never send a moving `main`-branch template to a customer.
 
 ## Support
 
